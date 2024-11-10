@@ -4,7 +4,7 @@ import librosa
 import pandas as pds
 
 # Définir les genres et les chemins vers chaque dossier de genre
-genres = ['classical', 'pop']
+genres = ['blues','classical','country','disco','hiphop','metal','pop','reggae','rock'] # Ne marche pas avec le jazz à voir pourquoi
 base_path = 'Data\\genres_original' # Répertoire contenant les dossiers 'classical' et 'pop'
 
 # Initialiser une liste pour stocker les données
@@ -13,7 +13,7 @@ data = []
 # Parcourir chaque genre et charger les fichiers audio
 for genre in genres:
     folder_path = os.path.join(base_path, genre)
-    label = genres.index(genre)  # Label numérique : 0 pour classical, 1 pour pop
+      # Label numérique : 0 pour classical, 1 pour pop
 
     # Charger chaque fichier dans le dossier du genre
     for file in os.listdir(folder_path):
@@ -25,7 +25,7 @@ for genre in genres:
         mfccs_mean = np.mean(mfccs.T, axis=0)  # Moyenne sur l'axe du temps
 
         # Ajouter les caractéristiques et le label au dataset
-        data.append([mfccs_mean, label])
+        data.append([mfccs_mean, genre])
 
 # Conversion en DataFrame pour une utilisation plus facile
 df = pds.DataFrame(data, columns=['features', 'label'])
@@ -33,4 +33,5 @@ df = pds.DataFrame(data, columns=['features', 'label'])
 # Créer les matrices de caractéristiques et de labels
 X = np.array(df['features'].tolist())  # Caractéristiques
 y = df['label'].values  # Labels
+
 print(df)
