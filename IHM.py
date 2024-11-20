@@ -4,9 +4,21 @@ import pygame
 import os
 import threading
 import time
+import joblib
+import numpy as np
+import librosa
+from sklearn.preprocessing import StandardScaler
+import Trouver_genre_musique
 
 # Initialisation de pygame pour le son
 pygame.mixer.init()
+
+# Charger le modèle de prédiction (assurez-vous que le modèle est déjà enregistré avec joblib)
+try:
+    model = joblib.load('modele_genre_musical.pkl')
+    scaler = joblib.load('scaler.pkl')  # Si vous utilisez un scaler pour normaliser les données
+except Exception as e:
+    print(f"Erreur lors du chargement du modèle ou du scaler : {e}")
 
 # Création de la fenêtre principale en plein écran
 root = tk.Tk()
@@ -19,15 +31,16 @@ chemin_fichier = tk.StringVar()
 musique_en_pause = False  # Indique si la musique est en pause
 resultat_genre = tk.StringVar(value="")  # Variable pour stocker le résultat de l'analyse
 
+
 # Fonction pour quitter le mode plein écran avec la touche Échap
 def quitter_plein_ecran(event):
     root.attributes("-fullscreen", False)
 
-# Fonction pour ouvrir l'explorateur de fichiers et sélectionner un fichier .wav
+
 def selectionner_fichier():
     fichier_path = filedialog.askopenfilename(
-        title="Sélectionner un fichier .wav",
-        filetypes=[("Fichiers WAV", "*.wav")]
+        title="Sélectionner un fichier audio",
+        filetypes=[("Fichiers Audio", "*.wav *.mp3")]
     )
     if fichier_path:
         chemin_fichier.set(fichier_path)
@@ -37,16 +50,22 @@ def selectionner_fichier():
     else:
         messagebox.showwarning("Avertissement", "Aucun fichier n'a été sélectionné.")
 
+
 # Fonction pour jouer le fichier .wav sélectionné
 def jouer_son(fichier_path):
     global musique_en_pause
     try:
+        extension = os.path.splitext(fichier_path)[1].lower()
+        if extension not in [".mp3", ".wav"]:
+            raise ValueError("Format non supporté. Veuillez sélectionner un fichier MP3 ou WAV.")
+
         pygame.mixer.music.load(fichier_path)
         pygame.mixer.music.play()
         bouton_pause.config(text="Pause")
         musique_en_pause = False
     except Exception as e:
         messagebox.showerror("Erreur", f"Impossible de lire le fichier audio : {e}")
+
 
 # Fonction pour mettre en pause ou reprendre la musique
 def pause_ou_reprendre():
@@ -60,23 +79,37 @@ def pause_ou_reprendre():
         bouton_pause.config(text="Reprendre")
         musique_en_pause = True
 
-# Fonction simulant le traitement d'analyse de genre
+
+# Fonction pour effectuer l'analyse du genre
 def analyse_genre():
-    resultat_genre.set("")
-    bouton_analyse.config(state="disabled")
-    threading.Thread(target=demarrer_animation).start()
+    fichier_path = chemin_fichier.get()
+    if not fichier_path:
+        messagebox.showwarning("Avertissement", "Veuillez sélectionner un fichier audio.")
+        return
 
-    time.sleep(5)  # Simulation de l'attente de l'analyse
-    genre = "Pop"  # Le genre détecté (pour l'exemple)
-    resultat_genre.set(f"Le genre de la musique est : {genre}")
+    # Fonction pour extraire les caractéristiques audio
+    def extraire_caracteristiques(fichier_path):
+        y, sr = librosa.load(fichier_path, sr=None)
 
-    # Mise à jour du label d'animation pour afficher le résultat
-    rotation_label.config(
-        text=resultat_genre.get(),
-        font=("Segoe UI", 20),  # Taille de police augmentée pour le résultat
-        fg="#0078D7"  # Couleur du texte en bleu
-    )
-    bouton_analyse.config(state="normal")
+        # Extraire les caractéristiques audio (par exemple, MFCC, Chroma, Spectral Contrast, etc.)
+        mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=13)
+        mfcc_mean = np.mean(mfcc, axis=1)
+
+        # Fusionner les caractéristiques dans un vecteur
+        features = mfcc_mean
+        return features
+
+    # Extraire les caractéristiques audio
+    features = extraire_caracteristiques(fichier_path)
+    features = scaler.transform([features])  # Si vous utilisez un scaler pour normaliser
+
+    # Effectuer la prédiction
+    genre_pred = model.predict(features)[0]
+
+    # Mise à jour du label pour afficher le résultat
+    resultat_genre.set(f"Le genre de la musique est : {genre_pred}")
+    rotation_label.config(text=resultat_genre.get(), font=("Segoe UI", 20), fg="#0078D7")
+
 
 # Fonction pour démarrer l'animation de chargement
 def demarrer_animation():
@@ -85,6 +118,7 @@ def demarrer_animation():
             rotation_label.config(text="•" * _ + "   " * (5 - _) + "Analyzing")
             time.sleep(0.2)
             root.update_idletasks()
+
 
 # Création d'un bandeau gris foncé pour le titre
 bandeau_titre = tk.Frame(root, bg="#333333", padx=20, pady=10)  # Cadre sombre autour du titre
@@ -96,7 +130,7 @@ titre_principal = tk.Label(
     text="Analyse du Genre de la Musique",
     font=("Segoe UI", 32, "bold"),
     fg="#FFFFFF",  # Texte blanc pour contraste
-    bg="#333333"   # Fond assorti au bandeau
+    bg="#333333"  # Fond assorti au bandeau
 )
 titre_principal.pack()
 
