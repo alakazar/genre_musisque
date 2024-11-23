@@ -3,22 +3,11 @@ from tkinter import filedialog, messagebox
 import pygame
 import os
 import threading
+import Trouver_genre_musique  # Importer le module pour la prédiction
 import time
-import joblib
-import numpy as np
-import librosa
-from sklearn.preprocessing import StandardScaler
-import Trouver_genre_musique
 
 # Initialisation de pygame pour le son
 pygame.mixer.init()
-
-# Charger le modèle de prédiction (assurez-vous que le modèle est déjà enregistré avec joblib)
-try:
-    model = joblib.load('modele_genre_musical.pkl')
-    scaler = joblib.load('scaler.pkl')  # Si vous utilisez un scaler pour normaliser les données
-except Exception as e:
-    print(f"Erreur lors du chargement du modèle ou du scaler : {e}")
 
 # Création de la fenêtre principale en plein écran
 root = tk.Tk()
@@ -51,7 +40,7 @@ def selectionner_fichier():
         messagebox.showwarning("Avertissement", "Aucun fichier n'a été sélectionné.")
 
 
-# Fonction pour jouer le fichier .wav sélectionné
+# Fonction pour jouer le fichier .wav ou .mp3 sélectionné
 def jouer_son(fichier_path):
     global musique_en_pause
     try:
@@ -87,37 +76,31 @@ def analyse_genre():
         messagebox.showwarning("Avertissement", "Veuillez sélectionner un fichier audio.")
         return
 
-    # Fonction pour extraire les caractéristiques audio
-    def extraire_caracteristiques(fichier_path):
-        y, sr = librosa.load(fichier_path, sr=None)
+    # Lancer l'animation de chargement dans un thread
+    def animation():
+        rotation_text = ["Analyzing.", "Analyzing..", "Analyzing..."]
+        i = 0
+        while not resultat_genre.get():
+            rotation_label.config(text=rotation_text[i % len(rotation_text)])
+            i += 1
+            time.sleep(0.3)
 
-        # Extraire les caractéristiques audio (par exemple, MFCC, Chroma, Spectral Contrast, etc.)
-        mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=13)
-        mfcc_mean = np.mean(mfcc, axis=1)
+    # Thread pour l'animation
+    threading.Thread(target=animation, daemon=True).start()
 
-        # Fusionner les caractéristiques dans un vecteur
-        features = mfcc_mean
-        return features
+    # Thread pour l'analyse
+    def effectuer_analyse():
+        try:
+            genre_pred = Trouver_genre_musique.predict_genre(fichier_path)
+            if genre_pred == "Erreur":
+                raise ValueError("Impossible de déterminer le genre.")
+            resultat_genre.set(f"Le genre de la musique est : {genre_pred}")
+            rotation_label.config(text=resultat_genre.get(), font=("Segoe UI", 20), fg="#0078D7")
+        except Exception as e:
+            resultat_genre.set("")
+            messagebox.showerror("Erreur", f"Une erreur est survenue : {e}")
 
-    # Extraire les caractéristiques audio
-    features = extraire_caracteristiques(fichier_path)
-    features = scaler.transform([features])  # Si vous utilisez un scaler pour normaliser
-
-    # Effectuer la prédiction
-    genre_pred = model.predict(features)[0]
-
-    # Mise à jour du label pour afficher le résultat
-    resultat_genre.set(f"Le genre de la musique est : {genre_pred}")
-    rotation_label.config(text=resultat_genre.get(), font=("Segoe UI", 20), fg="#0078D7")
-
-
-# Fonction pour démarrer l'animation de chargement
-def demarrer_animation():
-    while not resultat_genre.get():
-        for _ in range(5):
-            rotation_label.config(text="•" * _ + "   " * (5 - _) + "Analyzing")
-            time.sleep(0.2)
-            root.update_idletasks()
+    threading.Thread(target=effectuer_analyse, daemon=True).start()
 
 
 # Création d'un bandeau gris foncé pour le titre
@@ -138,10 +121,10 @@ titre_principal.pack()
 cadre_gauche = tk.Frame(root, bg="#333333", padx=20, pady=20)
 cadre_gauche.pack(side="left", fill="y", padx=(20, 10), pady=20)
 
-# Bouton pour ouvrir l'explorateur de fichiers et sélectionner un fichier .wav
+# Bouton pour ouvrir l'explorateur de fichiers et sélectionner un fichier .wav ou .mp3
 bouton_selectionner = tk.Button(
     cadre_gauche,
-    text="Sélectionner un fichier .wav",
+    text="Sélectionner un fichier .wav ou .mp3",
     font=("Segoe UI", 14),
     command=selectionner_fichier,
     fg="#333333",
@@ -185,7 +168,7 @@ bouton_analyse = tk.Button(
     cadre_gauche,
     text="Analyse du genre de la musique",
     font=("Segoe UI", 14),
-    command=lambda: threading.Thread(target=analyse_genre).start(),
+    command=analyse_genre,
     fg="#333333",
     bg="#e5e5e5",
     activebackground="#d5d5d5",
