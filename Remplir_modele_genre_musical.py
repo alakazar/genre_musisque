@@ -7,14 +7,11 @@ from sklearn.metrics import classification_report, accuracy_score
 import joblib
 import logging
 
-# Configuration des logs
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# Chemin vers les données audio
 DATA_PATH = "data/genres_original"
 MODEL_PATH = "modele_genre_musical.pkl"
 
-# Paramètres pour l'extraction des caractéristiques
 SAMPLE_RATE = 22050
 N_MFCC = 13
 MAX_PAD_LENGTH = 216
@@ -25,7 +22,6 @@ def extract_features(file_path):
     Extrait les caractéristiques d'un fichier audio.
     """
     try:
-        # Charger l'audio
         audio, sr = librosa.load(file_path, sr=SAMPLE_RATE)
 
         # MFCCs (13 coefficients)

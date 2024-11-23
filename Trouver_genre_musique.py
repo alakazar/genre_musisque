@@ -3,7 +3,7 @@ import librosa
 import numpy as np
 import joblib
 
-# Chemin vers le modèle sauvegardé
+
 MODEL_PATH = "modele_genre_musical.pkl"
 
 def extract_features(file_path):
@@ -46,19 +46,15 @@ def predict_genre(file_path):
     :return: Genre prédit ou "Erreur" en cas de problème.
     """
     try:
-        # Vérifier si le fichier existe et a une extension valide
         if not os.path.exists(file_path) or not file_path.lower().endswith(('.mp3', '.wav')):
             return "Erreur"
 
-        # Extraire les caractéristiques
         features = extract_features(file_path)
         if features is None:
             return "Erreur"
 
-        # Charger le modèle
         model = joblib.load(MODEL_PATH)
 
-        # Reshaper les caractéristiques et faire la prédiction
         features = features.reshape(1, -1)
         prediction = model.predict(features)
         return prediction[0]

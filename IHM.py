@@ -3,7 +3,7 @@ from tkinter import filedialog, messagebox
 import pygame
 import os
 import threading
-import Trouver_genre_musique  # Importer le module pour la prédiction
+import Trouver_genre_musique
 import time
 
 # Initialisation de pygame pour le son
@@ -12,16 +12,15 @@ pygame.mixer.init()
 # Création de la fenêtre principale en plein écran
 root = tk.Tk()
 root.title("Analyse du genre de la musique")
-root.attributes("-fullscreen", True)  # Mode plein écran
-root.configure(bg="#f3f3f3")  # Fond gris clair
+root.attributes("-fullscreen", True)
+root.configure(bg="#f3f3f3")
 
 # Variables globales
 chemin_fichier = tk.StringVar()
-musique_en_pause = False  # Indique si la musique est en pause
-resultat_genre = tk.StringVar(value="")  # Variable pour stocker le résultat de l'analyse
+musique_en_pause = False
+resultat_genre = tk.StringVar(value="")
 
 
-# Fonction pour quitter le mode plein écran avec la touche Échap
 def quitter_plein_ecran(event):
     root.attributes("-fullscreen", False)
 
@@ -190,10 +189,9 @@ rotation_label = tk.Label(
     fg="#0078D7",
     bg="#f3f3f3"
 )
-rotation_label.pack(expand=True)  # Centre le label de chargement
+rotation_label.pack(expand=True)
 
-# Associe la touche Échap pour quitter le plein écran
+
 root.bind("<Escape>", quitter_plein_ecran)
 
-# Lancement de la boucle principale de l'interface
 root.mainloop()
